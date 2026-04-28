@@ -1,5 +1,73 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../styles/globals.css';
+
+const styles = {
+  container: {
+    maxWidth: '900px',
+    margin: '0 auto',
+    padding: '2rem',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  inputSection: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
+  },
+  input: {
+    flex: 1,
+    minWidth: '200px',
+    padding: '0.5rem',
+    fontSize: '1rem',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+  },
+  select: {
+    padding: '0.5rem',
+    fontSize: '1rem',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    backgroundColor: 'white',
+  },
+  button: {
+    padding: '0.5rem 1rem',
+    fontSize: '1rem',
+    backgroundColor: '#1E5F74',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  deleteButton: {
+    padding: '0.25rem 0.5rem',
+    fontSize: '0.8rem',
+    backgroundColor: '#C85A54',
+    color: 'white',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+  },
+  tasksSection: {
+    marginBottom: '1.5rem',
+  },
+  taskList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+  },
+  taskItem: {
+    padding: '0.75rem',
+    marginBottom: '0.5rem',
+    backgroundColor: '#fff',
+    border: '1px solid #eee',
+    borderLeft: '4px solid #ccc',
+    borderRadius: '4px',
+  },
+  taskContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+};
 
 const TaskCommander = () => {
   const [tasks, setTasks] = useState([]);
@@ -116,33 +184,88 @@ const TaskCommander = () => {
     }
   };
 
-  // EXPORT TO CSV
+  // EXPORT TO CSV — Google Calendar compatible format
+  const escapeCSV = (value) => {
+    const str = String(value ?? '');
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const formatCalendarDate = (date) => {
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${mm}/${dd}/${date.getFullYear()}`;
+  };
+
+  const dueDateForTimeframe = (timeframe) => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (timeframe === 'Today') return d;
+    if (timeframe === 'This Week') {
+      const day = d.getDay();
+      const offset = day === 0 ? 0 : 7 - day;
+      d.setDate(d.getDate() + offset);
+      return d;
+    }
+    if (timeframe === 'This Month') {
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+    if (typeof timeframe === 'string' && /^Q[1-4]\s+\d{4}$/.test(timeframe)) {
+      const [q, yearStr] = timeframe.split(/\s+/);
+      const quarter = Number(q.slice(1));
+      const year = Number(yearStr);
+      const endMonth = quarter * 3;
+      return new Date(year, endMonth, 0);
+    }
+    return null;
+  };
+
   const exportTasksAsCSV = () => {
     if (tasks.length === 0) {
       alert('No tasks to export');
       return;
     }
 
-    const headers = ['Task', 'Organization', 'Timeframe', 'Status', 'Created'];
+    const headers = [
+      'Subject',
+      'Start Date',
+      'Start Time',
+      'End Date',
+      'End Time',
+      'All Day Event',
+      'Description',
+    ];
 
-    const rows = tasks.map(task => [
-      `"${task.title}"`,
-      task.org,
-      task.timeframe,
-      task.completed ? 'Completed' : 'Pending',
-      new Date(task.createdAt).toLocaleDateString(),
-    ]);
+    const rows = tasks.map(task => {
+      const due = dueDateForTimeframe(task.timeframe);
+      const dateStr = due ? formatCalendarDate(due) : '';
+      const description = [
+        `Organization: ${task.org}`,
+        `Timeframe: ${task.timeframe}`,
+        `Status: ${task.completed ? 'Completed' : 'Pending'}`,
+        `Created: ${new Date(task.createdAt).toLocaleDateString()}`,
+      ].join(' | ');
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(',')),
-    ].join('\n');
+      return [
+        `[${task.org}] ${task.title}`,
+        dateStr,
+        '09:00 AM',
+        dateStr,
+        '09:30 AM',
+        'True',
+        description,
+      ].map(escapeCSV).join(',');
+    });
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `TaskCommander-Export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `TaskCommander-Calendar-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -202,10 +325,10 @@ const TaskCommander = () => {
             fontSize: '0.9rem',
           }}
         >
-          📥 Export to CSV
+          📥 Export Tasks to CSV
         </button>
         <span style={{ fontSize: '0.85rem', color: '#666', alignSelf: 'center' }}>
-          (For Google Calendar import)
+          (Google Calendar import format — calendar.google.com → Settings → Import & export)
         </span>
       </div>
 
