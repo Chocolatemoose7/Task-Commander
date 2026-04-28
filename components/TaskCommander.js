@@ -111,7 +111,7 @@ const TaskCommander = () => {
     }));
   };
 
-  const TaskCard = ({ task }) => {
+  const renderTaskCard = (task) => {
     const org = ORGANIZATIONS[task.org];
     const priorityColor = {
       critical: '#FF4444',
@@ -122,6 +122,7 @@ const TaskCommander = () => {
 
     return (
       <div
+        key={task.id}
         style={{
           padding: '12px',
           background: '#0a0e27',
@@ -167,7 +168,7 @@ const TaskCommander = () => {
     );
   };
 
-  const TaskSection = ({ title, emoji, timeframe }) => {
+  const renderTaskSection = (title, emoji, timeframe) => {
     const sectionTasks = tasks.filter(t => t.timeframe === timeframe);
     const isExpanded = expandedSections[timeframe];
     const totalHours = getTotalHours(timeframe);
@@ -205,58 +206,10 @@ const TaskCommander = () => {
                 No tasks scheduled
               </div>
             ) : (
-              sectionTasks.map(task => <TaskCard key={task.id} task={task} />)
+              sectionTasks.map(task => renderTaskCard(task))
             )}
           </div>
         )}
-      </div>
-    );
-  };
-
-  const NewTaskForm = () => {
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}>
-        <div style={{ background: '#1a1f3a', border: '2px solid #2a3f5f', padding: '20px', borderRadius: '4px', width: '90%', maxWidth: '500px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '16px' }}>NEW TASK</h3>
-          <input type="text" placeholder="Task title" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '12px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} />
-          <textarea placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} rows="2" style={{ width: '100%', padding: '10px', marginBottom: '12px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-            <select value={newTask.org} onChange={(e) => setNewTask({...newTask, org: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
-              {Object.entries(ORGANIZATIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <select value={newTask.timeframe} onChange={(e) => setNewTask({...newTask, timeframe: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="longterm">Long-term</option>
-            </select>
-            <input type="number" value={newTask.hours} onChange={(e) => setNewTask({...newTask, hours: parseFloat(e.target.value) || 0})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} min="0.5" step="0.5" />
-            <select value={newTask.priority} onChange={(e) => setNewTask({...newTask, priority: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-            <select value={newTask.assignee} onChange={(e) => setNewTask({...newTask, assignee: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
-              <option value="Self">Self</option>
-              <option value="Bailey Monaghan">Bailey Monaghan</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={addTask} style={{ flex: 1, padding: '10px', background: '#1E5F74', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '700', textTransform: 'uppercase', borderRadius: '4px' }}>Create</button>
-            <button onClick={() => setShowNewTask(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#9E9E9E', border: '1px solid #2a3f5f', cursor: 'pointer', fontWeight: '700', textTransform: 'uppercase', borderRadius: '4px' }}>Cancel</button>
-          </div>
-        </div>
       </div>
     );
   };
@@ -284,9 +237,9 @@ const TaskCommander = () => {
         </div>
       </div>
 
-      <TaskSection title="TODAY (IMMEDIATE)" emoji="🔴" timeframe="today" />
-      <TaskSection title="THIS WEEK (STRATEGIC)" emoji="🟡" timeframe="week" />
-      <TaskSection title="LONG-TERM" emoji="🔵" timeframe="longterm" />
+      {renderTaskSection('TODAY (IMMEDIATE)', '🔴', 'today')}
+      {renderTaskSection('THIS WEEK (STRATEGIC)', '🟡', 'week')}
+      {renderTaskSection('LONG-TERM', '🔵', 'longterm')}
 
       <div style={{ marginTop: '24px', padding: '20px', background: 'linear-gradient(135deg, #1a2a3f 0%, #2a3f5f 100%)', border: '2px solid #2a3f5f', borderRadius: '4px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', color: '#D4A574', textTransform: 'uppercase' }}>
@@ -312,7 +265,51 @@ const TaskCommander = () => {
         </div>
       </div>
 
-      {showNewTask && <NewTaskForm />}
+      {showNewTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{ background: '#1a1f3a', border: '2px solid #2a3f5f', padding: '20px', borderRadius: '4px', width: '90%', maxWidth: '500px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '16px' }}>NEW TASK</h3>
+            <input type="text" placeholder="Task title" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '12px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} />
+            <textarea placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} rows="2" style={{ width: '100%', padding: '10px', marginBottom: '12px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              <select value={newTask.org} onChange={(e) => setNewTask({...newTask, org: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
+                {Object.entries(ORGANIZATIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+              <select value={newTask.timeframe} onChange={(e) => setNewTask({...newTask, timeframe: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="longterm">Long-term</option>
+              </select>
+              <input type="number" value={newTask.hours} onChange={(e) => setNewTask({...newTask, hours: parseFloat(e.target.value) || 0})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }} min="0.5" step="0.5" />
+              <select value={newTask.priority} onChange={(e) => setNewTask({...newTask, priority: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+              <select value={newTask.assignee} onChange={(e) => setNewTask({...newTask, assignee: e.target.value})} style={{ padding: '10px', background: '#0a0e27', border: '1px solid #2a3f5f', color: '#e8eaf6', borderRadius: '4px' }}>
+                <option value="Self">Self</option>
+                <option value="Bailey Monaghan">Bailey Monaghan</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={addTask} style={{ flex: 1, padding: '10px', background: '#1E5F74', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '700', textTransform: 'uppercase', borderRadius: '4px' }}>Create</button>
+              <button onClick={() => setShowNewTask(false)} style={{ flex: 1, padding: '10px', background: 'transparent', color: '#9E9E9E', border: '1px solid #2a3f5f', cursor: 'pointer', fontWeight: '700', textTransform: 'uppercase', borderRadius: '4px' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
