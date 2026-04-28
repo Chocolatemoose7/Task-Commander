@@ -514,7 +514,7 @@ const TaskCommander = () => {
             return (
               <div key={iso} style={styles.calendarDay}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <strong>{label}</strong>
+                  <strong style={{ color: '#000', fontWeight: 700 }}>{label}</strong>
                   <span style={{ fontSize: '0.75rem', color: '#666' }}>
                     {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </span>
@@ -670,7 +670,7 @@ const TaskCommander = () => {
           {fitnessSchedule.map((item, idx) => (
             <li key={idx} style={{ ...styles.taskItem, borderLeftColor: '#D4A574' }}>
               <div style={styles.taskContent}>
-                <span style={{ fontWeight: 'bold', minWidth: '120px' }}>{item.day}</span>
+                <span style={{ fontWeight: 700, color: '#000', minWidth: '120px' }}>{item.day}</span>
                 <span style={{ color: '#666' }}>{item.time} — {item.activity}</span>
               </div>
             </li>
