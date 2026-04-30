@@ -8,6 +8,7 @@ const TaskCommander = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('This Week');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
 
   const organizations = [
     { name: 'Beachhead', color: '#1E5F74' },
@@ -38,29 +39,37 @@ const TaskCommander = () => {
     { day: 'Sunday', time: 'Rest day', activity: 'Recovery' },
   ];
 
+  // Load tasks from localStorage on mount
   useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/.netlify/functions/sync-tasks', {
-          method: 'GET',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setTasks(data.tasks || []);
-        } else {
-          setError('Failed to load tasks');
-        }
-      } catch (err) {
-        setError('Error loading tasks: ' + err.message);
-      } finally {
-        setLoading(false);
+    try {
+      setLoading(true);
+      const savedTasks = localStorage.getItem('taskCommanderTasks');
+      if (savedTasks) {
+        setTasks(JSON.parse(savedTasks));
+        setSaveStatus('✅ Loaded from local storage');
+        setTimeout(() => setSaveStatus(''), 2000);
+      } else {
+        setTasks([]);
       }
-    };
-    loadTasks();
+    } catch (err) {
+      setError('Error loading tasks: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const addTask = async () => {
+  // Save tasks to localStorage whenever they change
+  const saveTasks = (updatedTasks) => {
+    try {
+      localStorage.setItem('taskCommanderTasks', JSON.stringify(updatedTasks));
+      setSaveStatus('💾 Saved locally');
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch (err) {
+      setError('Error saving: ' + err.message);
+    }
+  };
+
+  const addTask = () => {
     if (!newTask.trim()) return;
 
     const task = {
@@ -75,48 +84,24 @@ const TaskCommander = () => {
     const updatedTasks = [...tasks, task];
     setTasks(updatedTasks);
     setNewTask('');
-
-    try {
-      await fetch('/.netlify/functions/sync-tasks', {
-        method: 'POST',
-        body: JSON.stringify({ tasks: updatedTasks }),
-      });
-    } catch (err) {
-      setError('Error saving task: ' + err.message);
-    }
+    saveTasks(updatedTasks);
   };
 
-  const toggleTask = async (id) => {
+  const toggleTask = (id) => {
     const updatedTasks = tasks.map(t =>
       t.id === id ? { ...t, completed: !t.completed } : t
     );
     setTasks(updatedTasks);
-
-    try {
-      await fetch('/.netlify/functions/sync-tasks', {
-        method: 'POST',
-        body: JSON.stringify({ tasks: updatedTasks }),
-      });
-    } catch (err) {
-      setError('Error updating task: ' + err.message);
-    }
+    saveTasks(updatedTasks);
   };
 
-  const deleteTask = async (id) => {
+  const deleteTask = (id) => {
     const updatedTasks = tasks.filter(t => t.id !== id);
     setTasks(updatedTasks);
-
-    try {
-      await fetch('/.netlify/functions/sync-tasks', {
-        method: 'POST',
-        body: JSON.stringify({ tasks: updatedTasks }),
-      });
-    } catch (err) {
-      setError('Error deleting task: ' + err.message);
-    }
+    saveTasks(updatedTasks);
   };
 
-  // EXPORT TO CSV
+  // Export to CSV
   const exportTasksAsCSV = () => {
     if (tasks.length === 0) {
       alert('No tasks to export');
@@ -124,7 +109,6 @@ const TaskCommander = () => {
     }
 
     const headers = ['Task', 'Organization', 'Timeframe', 'Status', 'Created'];
-
     const rows = tasks.map(task => [
       `"${task.title}"`,
       task.org,
@@ -149,6 +133,25 @@ const TaskCommander = () => {
     document.body.removeChild(a);
   };
 
+  // Export to JSON (for OneDrive backup)
+  const exportTasksAsJSON = () => {
+    if (tasks.length === 0) {
+      alert('No tasks to backup');
+      return;
+    }
+
+    const jsonContent = JSON.stringify({ tasks }, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TaskCommander-Backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   const filteredTasks = tasks.filter(
     task => task.timeframe === selectedTimeframe
   );
@@ -158,7 +161,9 @@ const TaskCommander = () => {
       <h1>TASK COMMANDER</h1>
 
       {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+      {saveStatus && <div style={{ color: '#1E5F74', marginBottom: '1rem', fontWeight: 'bold' }}>{saveStatus}</div>}
 
+      {/* Input section */}
       <div style={styles.inputSection}>
         <input
           type="text"
@@ -193,7 +198,8 @@ const TaskCommander = () => {
         </button>
       </div>
 
-      <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+      {/* Export buttons */}
+      <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
           onClick={exportTasksAsCSV}
           style={{
@@ -202,13 +208,28 @@ const TaskCommander = () => {
             fontSize: '0.9rem',
           }}
         >
-          📥 Export to CSV
+          📥 Export CSV
         </button>
         <span style={{ fontSize: '0.85rem', color: '#666', alignSelf: 'center' }}>
-          (For Google Calendar import)
+          (For Outlook)
+        </span>
+        
+        <button
+          onClick={exportTasksAsJSON}
+          style={{
+            ...styles.button,
+            backgroundColor: '#0047AB',
+            fontSize: '0.9rem',
+          }}
+        >
+          💾 Backup JSON
+        </button>
+        <span style={{ fontSize: '0.85rem', color: '#666', alignSelf: 'center' }}>
+          (For OneDrive)
         </span>
       </div>
 
+      {/* Tasks by timeframe */}
       <div style={styles.tasksSection}>
         <h2>{selectedTimeframe} ({filteredTasks.length})</h2>
         {loading ? (
@@ -261,6 +282,7 @@ const TaskCommander = () => {
         )}
       </div>
 
+      {/* Fitness schedule */}
       <div style={{ ...styles.tasksSection, marginTop: '2rem' }}>
         <h2>📋 FITNESS SCHEDULE (Locked)</h2>
         <ul style={styles.taskList}>
@@ -279,6 +301,7 @@ const TaskCommander = () => {
         </ul>
       </div>
 
+      {/* Data storage info */}
       <div style={{
         marginTop: '2rem',
         padding: '1rem',
@@ -288,9 +311,10 @@ const TaskCommander = () => {
       }}>
         <strong>📊 Data Storage:</strong>
         <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-          <li>✅ Tasks: Saved to GitHub</li>
-          <li>✅ Backup: CSV export available</li>
-          <li>📅 Calendar: Manual import via CSV</li>
+          <li>✅ Tasks: Saved to your browser (local storage)</li>
+          <li>💾 Backup: Click "Backup JSON" to save for OneDrive</li>
+          <li>📅 Calendar: Export CSV weekly to Outlook</li>
+          <li>💰 Cost: FREE (no paywalls ever)</li>
         </ul>
       </div>
     </div>
